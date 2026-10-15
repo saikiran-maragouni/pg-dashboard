@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PG Dashboard — Data Test</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="bg-gray-50 min-h-screen p-4">
+
+  <div class="max-w-2xl mx-auto pt-4">
+    <!-- Header -->
+    <h1 class="text-xl font-bold text-gray-900 mb-1">🏠 PG Dashboard</h1>
+    <p class="text-sm text-gray-500 mb-4">Stage 1B — Local Data Test</p>
+
+    <!-- Action buttons -->
+    <div class="flex flex-wrap gap-2 mb-4">
+      <button
+        id="btnLoad"
+        class="bg-blue-600 hover:bg-blue-700 active:bg-blue-800
+               text-white px-4 py-2.5 rounded-lg text-sm font-medium
+               transition-colors min-h-[44px]"
+      >
+        Reload Data
+      </button>
+      <button
+        id="btnReset"
+        class="bg-red-50 hover:bg-red-100 active:bg-red-200
+               text-red-700 px-4 py-2.5 rounded-lg text-sm font-medium
+               transition-colors min-h-[44px] border border-red-200"
+      >
+        Reset Demo Data
+      </button>
+    </div>
+
+    <!-- Status message -->
+    <div id="status" class="mb-3 text-sm font-medium"></div>
+
+    <!-- saveRow() test panel -->
+    <div class="bg-white border border-gray-200 rounded-lg p-3 mb-4">
+      <p class="text-xs font-medium text-gray-500 mb-2 uppercase tracking-wide">
+        Test saveRow()
+      </p>
+      <div class="flex gap-2">
+        <input
+          id="testBedId"
+          type="text"
+          value="G01-A"
+          placeholder="BedID e.g. 101-B"
+          class="flex-1 px-3 py-2.5 border border-gray-300 rounded-lg text-sm
+                 focus:outline-none focus:ring-2 focus:ring-amber-400
+                 min-h-[44px]"
+        >
+        <button
+          id="btnToggle"
+          class="bg-amber-500 hover:bg-amber-600 active:bg-amber-700
+                 text-white px-4 py-2.5 rounded-lg text-sm font-medium
+                 transition-colors min-h-[44px] whitespace-nowrap"
+        >
+          Toggle Status
+        </button>
+      </div>
+      <p class="text-xs text-gray-400 mt-1.5">
+        Flips vacant ↔ occupied. Refresh the page to confirm it persisted.
+      </p>
+    </div>
+
+    <!-- Data table -->
+    <div id="tableWrap" class="overflow-x-auto rounded-lg border border-gray-200 hidden">
+      <table class="w-full text-sm border-collapse bg-white">
+        <thead>
+          <tr class="bg-gray-50 text-left text-xs text-gray-500 uppercase tracking-wide">
+            <th class="px-3 py-2.5">BedID</th>
+            <th class="px-3 py-2.5">Floor</th>
+            <th class="px-3 py-2.5">Status</th>
+            <th class="px-3 py-2.5">Tenant</th>
+            <th class="px-3 py-2.5 text-right">Rent</th>
+            <th class="px-3 py-2.5">Payment</th>
+            <th class="px-3 py-2.5">Due Date</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+
+    <!-- Updated-at label -->
+    <p id="updatedAt" class="text-xs text-gray-400 mt-3 hidden"></p>
+  </div>
+
+  <script type="module" src="test.js"></script>
+</body>
+</html>

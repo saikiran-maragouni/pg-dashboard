@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Sunrise PG — Dashboard</title>
+  <meta name="theme-color" content="#2563eb">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+
+  <!-- Tailwind CDN & Custom Config -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#EEF2FF',
+              100: '#E0E7FF',
+              500: '#6366F1',
+              600: '#4F46E5',
+              700: '#4338CA',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="bg-[#F8FAFC] min-h-screen text-slate-900 pb-28 antialiased selection:bg-blue-100 selection:text-blue-900">
+
+  <!-- ── Top Header (Frosted Glass) ─────────────────────────────────── -->
+  <header class="bg-white/85 backdrop-blur-xl border-b border-slate-200/80 sticky top-0 z-30 shadow-xs">
+    <div class="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between">
+      <div class="flex items-center gap-2.5">
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center font-bold text-base shadow-sm ring-1 ring-blue-700/20 flex-shrink-0">
+          🏠
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 id="pgTitle" class="text-sm sm:text-base font-extrabold text-slate-900 tracking-tight leading-none">
+              Sunrise PG
+            </h1>
+            <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/60 leading-none">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+              Live
+            </span>
+          </div>
+          <p id="updatedAt" class="text-[10px] font-medium text-slate-400 mt-0.5"></p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-1.5">
+        <div id="headerPill" class="text-[11px] font-semibold px-2.5 py-1 bg-slate-100/80 text-slate-600 rounded-full border border-slate-200/60">
+          Hyderabad
+        </div>
+
+        <!-- "..." Menu Button & Dropdown -->
+        <div class="relative">
+          <button
+            id="menuBtn"
+            type="button"
+            aria-label="More options"
+            aria-haspopup="true"
+            aria-expanded="false"
+            class="w-8 h-8 flex items-center justify-center rounded-xl text-slate-500 hover:text-slate-900 hover:bg-slate-100 active:bg-slate-200 transition-colors"
+          >
+            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
+            </svg>
+          </button>
+
+          <!-- Dropdown menu -->
+          <div
+            id="menuDropdown"
+            class="absolute right-0 mt-2 w-48 bg-white border border-slate-200/90 rounded-2xl shadow-xl py-1.5 z-50 hidden transform origin-top-right transition-all ring-1 ring-slate-900/5"
+          >
+            <button
+              id="menuResetBtn"
+              type="button"
+              class="w-full text-left px-3.5 py-2.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 flex items-center gap-2.5 transition-colors"
+            >
+              <span class="text-sm">🔄</span>
+              <span>Reset demo data</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ── Main Content Container ────────────────────────────────────── -->
+  <main class="max-w-2xl mx-auto px-4 py-4">
+
+    <!-- Loading Skeleton -->
+    <div id="loading" class="text-center py-28">
+      <div class="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 mb-3 shadow-sm ring-1 ring-blue-100 animate-pulse">
+        <svg class="w-6 h-6 animate-spin" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+        </svg>
+      </div>
+      <p class="text-slate-400 text-xs font-semibold tracking-wide uppercase">Syncing Dashboard Data…</p>
+    </div>
+
+    <!-- Dashboard App (shown after data loads) -->
+    <div id="dashboard" class="hidden">
+
+      <!-- ══════════════ TAB 1: BEDS ══════════════ -->
+      <section id="viewBeds" class="tab-pane">
+        <!-- Summary cards: 2×2 grid -->
+        <section id="summaryCards" class="grid grid-cols-2 gap-3 mb-3.5"></section>
+
+        <!-- Overdue alert bar (tappable to jump to Rent -> Overdue) -->
+        <div id="overdueBar" class="mb-4 cursor-pointer transition-transform active:scale-[0.99]" role="button" tabindex="0"></div>
+
+        <!-- Color legend & Vacant Only Filter Control -->
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4 bg-white/60 p-2.5 rounded-2xl border border-slate-200/60 shadow-xs">
+          <div id="legend"></div>
+
+          <!-- Vacant filter chip -->
+          <div class="flex items-center gap-2">
+            <button
+              id="vacantFilterChip"
+              type="button"
+              class="px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-all flex items-center gap-1.5 bg-white text-slate-700 border-slate-200 hover:bg-slate-50 min-h-[36px] shadow-xs active:scale-95"
+            >
+              <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+              <span>Vacant only</span>
+            </button>
+            <span id="vacantCountBadge" class="text-xs font-bold text-emerald-800 bg-emerald-100/90 border border-emerald-200 px-2.5 py-1 rounded-full hidden">
+              9 vacant beds
+            </span>
+          </div>
+        </div>
+
+        <!-- Bed grid grouped by floor → room -->
+        <section id="bedGrid"></section>
+      </section>
+
+      <!-- ══════════════ TAB 2: TENANTS ══════════════ -->
+      <section id="viewTenants" class="tab-pane hidden">
+        <!-- Search Bar -->
+        <div class="relative mb-3.5">
+          <input
+            id="tenantSearch"
+            type="text"
+            placeholder="Search by tenant name, room, bed, or phone…"
+            class="w-full pl-10 pr-10 py-3 bg-white border border-slate-200 rounded-2xl text-sm
+                   placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 shadow-xs min-h-[48px] transition-all"
+          >
+          <span class="absolute left-3.5 top-3.5 text-slate-400 pointer-events-none">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+            </svg>
+          </span>
+          <button id="tenantSearchClear" class="absolute right-3 top-3 text-slate-400 hover:text-slate-600 hidden p-1">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Counter & status -->
+        <div class="flex items-center justify-between mb-3 px-1">
+          <p id="tenantCount" class="text-[11px] font-bold text-slate-400 uppercase tracking-wider"></p>
+        </div>
+
+        <!-- Tenants List -->
+        <div id="tenantList" class="space-y-2.5"></div>
+      </section>
+
+      <!-- ══════════════ TAB 3: RENT ══════════════ -->
+      <section id="viewRent" class="tab-pane hidden">
+        <!-- Filter Chips (horizontal scrollable on narrow screens) -->
+        <div class="flex gap-2 overflow-x-auto pb-2 mb-3.5 scrollbar-none">
+          <button data-filter="all" class="rent-filter-btn px-4 py-2 rounded-xl text-xs font-semibold border min-h-[44px] transition-colors whitespace-nowrap bg-blue-600 text-white border-blue-600 shadow-xs">
+            All Collections
+          </button>
+          <button data-filter="overdue" class="rent-filter-btn px-4 py-2 rounded-xl text-xs font-semibold border min-h-[44px] transition-colors whitespace-nowrap bg-white text-slate-700 border-slate-200 hover:bg-slate-50">
+            Overdue
+          </button>
+          <button data-filter="due_soon" class="rent-filter-btn px-4 py-2 rounded-xl text-xs font-semibold border min-h-[44px] transition-colors whitespace-nowrap bg-white text-slate-700 border-slate-200 hover:bg-slate-50">
+            Due Soon
+          </button>
+          <button data-filter="paid" class="rent-filter-btn px-4 py-2 rounded-xl text-xs font-semibold border min-h-[44px] transition-colors whitespace-nowrap bg-white text-slate-700 border-slate-200 hover:bg-slate-50">
+            Paid
+          </button>
+        </div>
+
+        <!-- Rent Filter Summary Pill -->
+        <div id="rentFilterSummary" class="text-xs font-semibold text-slate-600 mb-3 px-1"></div>
+
+        <!-- Rent Rows List -->
+        <div id="rentList" class="space-y-2.5"></div>
+      </section>
+
+    </div>
+
+  </main>
+
+  <!-- ── Bottom Navigation Dock (Frosted Glass Floating Dock) ───────── -->
+  <nav class="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-xl border-t border-slate-200/80 z-30 shadow-[0_-8px_30px_rgba(0,0,0,0.06)] bottom-nav-safe">
+    <div class="max-w-2xl mx-auto flex items-center justify-around h-16 px-4">
+      <!-- Tab 1: Beds -->
+      <button
+        id="tabBtnBeds"
+        data-tab="beds"
+        class="tab-nav-btn flex-1 flex flex-col items-center justify-center h-full min-h-[48px] text-blue-600 font-bold transition-all"
+      >
+        <div class="flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all">
+          <svg class="w-5 h-5 mb-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18m-9-4v8m-7 4h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+          </svg>
+          <span class="text-[11px] tracking-tight">Beds</span>
+        </div>
+      </button>
+
+      <!-- Tab 2: Tenants -->
+      <button
+        id="tabBtnTenants"
+        data-tab="tenants"
+        class="tab-nav-btn flex-1 flex flex-col items-center justify-center h-full min-h-[48px] text-slate-400 hover:text-slate-600 font-semibold transition-all"
+      >
+        <div class="flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all">
+          <svg class="w-5 h-5 mb-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
+          </svg>
+          <span class="text-[11px] tracking-tight">Tenants</span>
+        </div>
+      </button>
+
+      <!-- Tab 3: Rent -->
+      <button
+        id="tabBtnRent"
+        data-tab="rent"
+        class="tab-nav-btn flex-1 flex flex-col items-center justify-center h-full min-h-[48px] text-slate-400 hover:text-slate-600 font-semibold transition-all"
+      >
+        <div class="flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all">
+          <svg class="w-5 h-5 mb-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path>
+          </svg>
+          <span class="text-[11px] tracking-tight">Rent</span>
+        </div>
+      </button>
+    </div>
+  </nav>
+
+  <!-- ── Bed Detail Bottom Sheet / Modal ────────────────────────────── -->
+  <div id="bedSheetBackdrop" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 transition-opacity hidden flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div
+      id="bedSheetModal"
+      class="w-full sm:max-w-md bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl p-6 max-h-[90vh] overflow-y-auto transform transition-transform border border-slate-100"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="sheetBedId"
+    >
+      <!-- Mobile drag handle pill -->
+      <div class="w-10 h-1.5 bg-slate-200 rounded-full mx-auto mb-4 sm:hidden"></div>
+
+      <div class="flex items-center justify-between pb-3.5 border-b border-slate-100 mb-4">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-lg bg-blue-50 text-blue-700 flex items-center justify-center font-bold text-xs font-mono border border-blue-100">
+            🛏️
+          </div>
+          <div>
+            <h2 id="sheetBedId" class="text-base font-extrabold text-slate-900 font-mono tracking-tight leading-none">101-A</h2>
+            <p id="sheetRoomSub" class="text-[11px] font-medium text-slate-400 mt-0.5"></p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <span id="sheetStatusBadge"></span>
+          <button
+            id="sheetCloseBtn"
+            aria-label="Close modal"
+            class="w-8 h-8 flex items-center justify-center rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Sheet Details Container -->
+      <div id="sheetContent" class="space-y-3 mb-6"></div>
+
+      <!-- Action Buttons Container -->
+      <div id="sheetActions" class="space-y-2"></div>
+    </div>
+  </div>
+
+  <!-- ── Floating Toast Container ───────────────────────────────────── -->
+  <div
+    id="toastContainer"
+    aria-live="polite"
+    class="fixed bottom-20 left-4 right-4 max-w-md mx-auto z-40 pointer-events-none transition-all duration-300 transform translate-y-8 opacity-0 hidden"
+  >
+    <div class="pointer-events-auto bg-slate-900/95 backdrop-blur-md text-white rounded-2xl shadow-2xl p-3.5 flex items-center justify-between gap-3 text-sm border border-slate-800 ring-1 ring-white/10">
+      <div class="flex items-center gap-2.5 min-w-0">
+        <span id="toastIcon" class="text-emerald-400 text-base flex-shrink-0">✓</span>
+        <p id="toastMessage" class="truncate font-semibold text-xs sm:text-sm"></p>
+      </div>
+      <div class="flex items-center gap-2 flex-shrink-0">
+        <button
+          id="toastActionBtn"
+          class="px-3 py-1.5 text-xs font-bold text-blue-400 hover:text-blue-300 active:text-blue-200 bg-slate-800 hover:bg-slate-700 rounded-xl min-h-[36px] transition-colors border border-slate-700"
+        >
+          Undo
+        </button>
+        <button
+          id="toastCloseBtn"
+          aria-label="Dismiss toast"
+          class="text-slate-400 hover:text-white p-1 min-w-[36px] min-h-[36px] flex items-center justify-center rounded-lg"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
