@@ -21,7 +21,7 @@
 import { buildSeedData } from './seed.js';
 
 const STORAGE_KEY    = 'pg_dashboard_beds';
-const SCHEMA_VERSION = 2;
+const SCHEMA_VERSION = 4;
 
 // ─── Internal helpers ────────────────────────────────────────────────────────
 

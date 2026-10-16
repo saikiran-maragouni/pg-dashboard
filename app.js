@@ -33,6 +33,9 @@ let currentTab = 'beds';
 let tenantSearchQuery = '';
 let currentRentFilter = 'all';
 let isVacantOnly = false; // In-memory only filter for Beds tab
+const expandedFloors = new Set([0]); // Set of floor numbers uncollapsed/expanded (Ground floor open by default)
+let isCollectedBlurred = true; // Default blurred for financial privacy
+let isPendingBlurred = true; // Default blurred for financial privacy
 
 // In-flight operation lock per bed to prevent double-taps
 const inFlightBeds = new Set();
@@ -60,6 +63,7 @@ const $viewBeds = document.getElementById('viewBeds');
 const $summaryCards = document.getElementById('summaryCards');
 const $overdueBar = document.getElementById('overdueBar');
 const $legend = document.getElementById('legend');
+const $toggleAllFloorsBtn = document.getElementById('toggleAllFloorsBtn');
 const $vacantFilterChip = document.getElementById('vacantFilterChip');
 const $vacantCountBadge = document.getElementById('vacantCountBadge');
 const $bedGrid = document.getElementById('bedGrid');
@@ -305,33 +309,71 @@ function renderSummaryCards(s) {
     </div>
 
     <!-- Rent Collected -->
-    <div class="bg-white rounded-2xl border border-slate-200/90 p-3.5 sm:p-4 shadow-[0_2px_8px_rgba(0,0,0,0.03)]">
+    <div id="cardCollected" class="bg-white rounded-2xl border border-slate-200/90 p-3.5 sm:p-4 shadow-[0_2px_8px_rgba(0,0,0,0.03)] cursor-pointer select-none group transition-all hover:border-blue-300 active:scale-[0.98]">
       <div class="flex items-center justify-between mb-1.5">
         <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Collected</span>
-        <span class="w-5 h-5 rounded-md font-bold bg-blue-50 text-blue-600 flex items-center justify-center text-xs">₹</span>
+        <span class="w-6 h-6 rounded-md font-bold bg-blue-50 text-blue-600 flex items-center justify-center text-xs group-hover:bg-blue-100 transition-colors">
+          ${isCollectedBlurred ? `
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" />
+            </svg>
+          ` : `
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+            </svg>
+          `}
+        </span>
       </div>
-      <p class="text-lg sm:text-2xl font-extrabold text-slate-900 tracking-tight tabular-nums truncate">
+      <p class="text-lg sm:text-2xl font-extrabold text-slate-900 tracking-tight tabular-nums truncate transition-all duration-300 ${isCollectedBlurred ? 'blur-md select-none group-hover:blur-[5px]' : 'blur-none'}">
         ${formatINR(s.collected)}
       </p>
       <p class="text-[11px] font-semibold text-emerald-600 mt-2 flex items-center gap-1 truncate">
-        <span>✓</span> Received
+        <span>✓</span> ${isCollectedBlurred ? 'Click to show' : 'Received'}
       </p>
     </div>
 
     <!-- Rent Pending -->
-    <div class="bg-white rounded-2xl border border-slate-200/90 p-3.5 sm:p-4 shadow-[0_2px_8px_rgba(0,0,0,0.03)]">
+    <div id="cardPending" class="bg-white rounded-2xl border border-slate-200/90 p-3.5 sm:p-4 shadow-[0_2px_8px_rgba(0,0,0,0.03)] cursor-pointer select-none group transition-all hover:border-amber-300 active:scale-[0.98]">
       <div class="flex items-center justify-between mb-1.5">
         <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Pending</span>
-        <span class="w-5 h-5 rounded-md font-bold bg-amber-50 text-amber-700 flex items-center justify-center text-xs">⏳</span>
+        <span class="w-6 h-6 rounded-md font-bold bg-amber-50 text-amber-700 flex items-center justify-center text-xs group-hover:bg-amber-100 transition-colors">
+          ${isPendingBlurred ? `
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" />
+            </svg>
+          ` : `
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+            </svg>
+          `}
+        </span>
       </div>
-      <p class="text-lg sm:text-2xl font-extrabold text-slate-900 tracking-tight tabular-nums truncate">
+      <p class="text-lg sm:text-2xl font-extrabold text-slate-900 tracking-tight tabular-nums truncate transition-all duration-300 ${isPendingBlurred ? 'blur-md select-none group-hover:blur-[5px]' : 'blur-none'}">
         ${formatINR(s.pending)}
       </p>
       <p class="text-[11px] font-semibold text-amber-600 mt-2 flex items-center gap-1 truncate">
-        <span>•</span> To collect
+        <span>•</span> ${isPendingBlurred ? 'Click to show' : 'To collect'}
       </p>
     </div>
   `;
+
+  const $cardCollected = document.getElementById('cardCollected');
+  if ($cardCollected) {
+    $cardCollected.addEventListener('click', () => {
+      isCollectedBlurred = !isCollectedBlurred;
+      renderSummaryCards(s);
+    });
+  }
+
+  const $cardPending = document.getElementById('cardPending');
+  if ($cardPending) {
+    $cardPending.addEventListener('click', () => {
+      isPendingBlurred = !isPendingBlurred;
+      renderSummaryCards(s);
+    });
+  }
 }
 
 function renderOverdueBar(count) {
@@ -448,33 +490,81 @@ function renderBedGrid(beds) {
   }
 
   const floors = groupByFloorAndRoom(displayedBeds);
+  const visibleFloors = Array.from(floors.keys());
+  const allExpanded = visibleFloors.length > 0 && visibleFloors.every(f => expandedFloors.has(f));
+
+  if ($toggleAllFloorsBtn) {
+    $toggleAllFloorsBtn.innerHTML = allExpanded
+      ? `<span>Collapse all</span>`
+      : `<span>Expand all</span>`;
+    $toggleAllFloorsBtn.classList.remove('opacity-50', 'pointer-events-none');
+  }
+
   let html = '';
 
   for (const [floorNum, rooms] of floors) {
     // Count beds on this floor
     const floorBedsTotal = [...rooms.values()].reduce((sum, list) => sum + list.length, 0);
+    const floorBedsList = [...rooms.values()].flat();
+    const floorOccupiedCount = floorBedsList.filter(b => b.Status === 'occupied').length;
+    const floorVacantCount = floorBedsList.filter(b => b.Status === 'vacant').length;
+    const floorOverdueCount = floorBedsList.filter(b => isOverdue(b)).length;
+    const isExpanded = expandedFloors.has(floorNum);
 
     html += `
-      <div class="mb-5">
-        <div class="flex items-center justify-between mb-2.5 px-1">
-          <h2 class="text-xs font-extrabold text-slate-400 uppercase tracking-wider">
-            ${floorLabel(floorNum)} Floor
-          </h2>
-          <span class="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
-            ${floorBedsTotal} ${isVacantOnly ? 'Vacant' : ''} Bed${floorBedsTotal === 1 ? '' : 's'}
-          </span>
-        </div>
+      <div class="mb-3.5 bg-white rounded-2xl border border-slate-200/80 overflow-hidden shadow-xs transition-all">
+        <button
+          type="button"
+          data-floor="${floorNum}"
+          class="floor-toggle-btn w-full px-4 py-3 flex items-center justify-between text-left transition-colors hover:bg-slate-50 active:bg-slate-100 select-none cursor-pointer"
+          aria-expanded="${isExpanded}"
+        >
+          <div class="flex items-center gap-3">
+            <span class="w-7 h-7 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center text-xs font-black flex-shrink-0">
+              ${floorNum === 0 ? 'G' : floorNum}
+            </span>
+            <div>
+              <div class="flex items-center gap-2">
+                <h2 class="text-xs font-extrabold text-slate-800 uppercase tracking-wider">
+                  ${floorLabel(floorNum)} Floor
+                </h2>
+                ${floorOverdueCount > 0 ? `
+                  <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                    <span class="w-1.5 h-1.5 rounded-full bg-rose-500 animate-ping"></span>
+                    ${floorOverdueCount} Overdue
+                  </span>
+                ` : ''}
+              </div>
+              <p class="text-[11px] font-medium text-slate-400 mt-0.5">
+                ${rooms.size} rooms • ${floorOccupiedCount} occupied, ${floorVacantCount} vacant
+              </p>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-2">
+            ${floorVacantCount > 0 ? `
+              <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                ${floorVacantCount} vacant
+              </span>
+            ` : ''}
+            <svg class="w-4 h-4 text-slate-400 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7" />
+            </svg>
+          </div>
+        </button>
+
+        <div class="floor-rooms-container p-3 pt-0 border-t border-slate-100 space-y-2.5 ${isExpanded ? 'block' : 'hidden'}">
     `;
 
     for (const [roomName, roomBeds] of rooms) {
       const roomRent = roomBeds[0]?.RentAmount ? formatINR(roomBeds[0].RentAmount) : '';
 
       html += `
-        <div class="bg-white rounded-2xl border border-slate-200/80 p-3.5 mb-3 shadow-[0_1px_3px_rgba(0,0,0,0.03)] hover:border-slate-300/80 transition-all">
-          <div class="flex items-center justify-between mb-2.5 px-0.5">
+        <div class="bg-slate-50/70 rounded-xl border border-slate-200/60 p-3 mt-2.5">
+          <div class="flex items-center justify-between mb-2 px-0.5">
             <div class="flex items-center gap-2">
               <span class="text-xs font-extrabold text-slate-800 tracking-tight">Room ${roomName}</span>
-              <span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 border border-slate-200/60">
+              <span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-white text-slate-600 border border-slate-200/60 shadow-2xs">
                 ${roomBeds.length}-Sharing
               </span>
             </div>
@@ -500,7 +590,7 @@ function renderBedGrid(beds) {
           <button
             type="button"
             data-bed-id="${bed.BedID}"
-            class="bed-tile-btn group relative rounded-2xl border-2 p-3 text-left transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md active:scale-95 shadow-xs flex-1 min-w-[95px] max-w-[150px] ${colors}"
+            class="bed-tile-btn group relative rounded-xl border-2 p-3 text-left transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md active:scale-95 shadow-xs flex-1 min-w-[95px] max-w-[150px] ${colors}"
           >
             <div class="flex items-center justify-between gap-1">
               <span class="text-xs font-extrabold tracking-tight font-mono">${bed.BedID}</span>
@@ -522,10 +612,25 @@ function renderBedGrid(beds) {
       `;
     }
 
-    html += `</div>`;
+    html += `
+        </div>
+      </div>
+    `;
   }
 
   $bedGrid.innerHTML = html;
+
+  document.querySelectorAll('.floor-toggle-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const f = Number(btn.dataset.floor);
+      if (expandedFloors.has(f)) {
+        expandedFloors.delete(f);
+      } else {
+        expandedFloors.add(f);
+      }
+      renderBedGrid(allBeds);
+    });
+  });
 
   document.querySelectorAll('.bed-tile-btn').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -719,6 +824,7 @@ function renderRent() {
     const isDueOrOverdue = b.PaymentStatus === 'due';
     const isPendingSave = inFlightBeds.has(b.BedID);
     const initial = (b.TenantName || '?').charAt(0).toUpperCase();
+    const cleanPhone = (b.Phone || '').replace(/\s+/g, '');
 
     let rowBorder = 'border-slate-200/80';
     let relNoteColor = 'text-slate-500';
@@ -735,53 +841,66 @@ function renderRent() {
     }
 
     return `
-      <div class="bg-white rounded-2xl border ${rowBorder} p-3.5 shadow-[0_1px_3px_rgba(0,0,0,0.03)] hover:border-slate-300 transition-all flex items-center justify-between gap-3">
-        <div class="flex items-center gap-3 min-w-0 flex-1">
+      <div class="bg-white rounded-2xl border ${rowBorder} p-3 sm:p-3.5 shadow-[0_1px_3px_rgba(0,0,0,0.03)] hover:border-slate-300 transition-all flex items-center justify-between gap-2.5 sm:gap-3">
+        <div class="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
           <div class="w-10 h-10 rounded-xl ${avatarBg} font-extrabold text-sm flex items-center justify-center flex-shrink-0 shadow-xs">
             ${initial}
           </div>
           <div class="min-w-0 flex-1">
-            <div class="flex items-center gap-2 mb-0.5 flex-wrap">
+            <div class="flex items-center gap-1.5 sm:gap-2 mb-0.5 flex-wrap">
               <h3 class="text-sm font-bold text-slate-900 truncate">${b.TenantName || '—'}</h3>
               <button
                 type="button"
                 data-bed-id="${b.BedID}"
-                class="rent-bed-pill text-[10px] font-mono px-2 py-0.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-bold cursor-pointer transition-colors"
+                class="rent-bed-pill text-[10px] font-mono px-1.5 py-0.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md font-bold cursor-pointer transition-colors"
               >
                 ${b.BedID}
               </button>
               ${badge}
             </div>
-            <div class="flex items-center gap-2 text-xs text-slate-500 flex-wrap">
+            <div class="flex items-center gap-1.5 sm:gap-2 text-[11px] sm:text-xs text-slate-500 flex-wrap">
               <span>Due ${b.DueDate || '—'}</span>
               ${relNote ? `<span class="${relNoteColor}">(${relNote})</span>` : ''}
             </div>
           </div>
         </div>
 
-        <div class="flex items-center gap-2.5 flex-shrink-0">
+        <div class="flex items-center gap-2 sm:gap-2.5 flex-shrink-0">
           <div class="text-right">
-            <p class="text-sm font-extrabold text-slate-900 tabular-nums">${formatINR(b.RentAmount)}</p>
-            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Room ${b.Room}</p>
+            <p class="text-xs sm:text-sm font-extrabold text-slate-900 tabular-nums">${formatINR(b.RentAmount)}</p>
+            <p class="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-wide">Rm ${b.Room}</p>
           </div>
+
+          ${cleanPhone ? `
+            <a
+              href="tel:${cleanPhone}"
+              aria-label="Call ${b.TenantName}"
+              title="Call ${b.TenantName} (${b.Phone})"
+              class="flex items-center justify-center w-10 h-10 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white active:scale-95 transition-all flex-shrink-0 border border-blue-100 shadow-2xs"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"></path>
+              </svg>
+            </a>
+          ` : ''}
 
           ${isDueOrOverdue ? `
             <button
               type="button"
               data-bed-id="${b.BedID}"
               ${isPendingSave ? 'disabled' : ''}
-              class="rent-mark-paid-btn px-3 py-2 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 disabled:opacity-50 text-white rounded-xl text-xs font-bold min-h-[44px] transition-all ml-1 shadow-xs active:scale-95 flex items-center gap-1"
+              class="rent-mark-paid-btn px-2.5 sm:px-3 py-2 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 disabled:opacity-50 text-white rounded-xl text-xs font-bold min-h-[40px] sm:min-h-[44px] transition-all ml-0.5 shadow-xs active:scale-95 flex items-center gap-1"
             >
-              <span>✓</span> ${isPendingSave ? 'Saving…' : 'Paid'}
+              <span>✓</span> ${isPendingSave ? '…' : 'Paid'}
             </button>
           ` : `
             <button
               type="button"
               data-bed-id="${b.BedID}"
               ${isPendingSave ? 'disabled' : ''}
-              class="rent-mark-unpaid-btn px-2.5 py-2 bg-white hover:bg-amber-50 active:bg-amber-100 text-amber-800 border border-amber-300 disabled:opacity-50 rounded-xl text-xs font-bold min-h-[44px] transition-all ml-1 shadow-xs active:scale-95 flex items-center gap-1"
+              class="rent-mark-unpaid-btn px-2 sm:px-2.5 py-2 bg-white hover:bg-amber-50 active:bg-amber-100 text-amber-800 border border-amber-300 disabled:opacity-50 rounded-xl text-xs font-bold min-h-[40px] sm:min-h-[44px] transition-all ml-0.5 shadow-xs active:scale-95 flex items-center gap-1"
             >
-              <span>↩</span> ${isPendingSave ? 'Saving…' : 'Unpaid'}
+              <span>↩</span> ${isPendingSave ? '…' : 'Unpaid'}
             </button>
           `}
         </div>
@@ -926,13 +1045,72 @@ function renderBedSheet(bed) {
       </div>
     `;
   } else {
+    let computedRent = Number(bed.RentAmount) || 0;
+    if (!computedRent) {
+      const roomOccupied = allBeds.filter(b => b.Room === bed.Room && b.Status === 'occupied' && Number(b.RentAmount) > 0);
+      if (roomOccupied.length > 0) {
+        computedRent = Number(roomOccupied[0].RentAmount);
+      } else {
+        const allOccupiedRents = allBeds
+          .filter(b => b.Status === 'occupied' && Number(b.RentAmount) > 0)
+          .map(b => Number(b.RentAmount))
+          .sort((a, b) => a - b);
+
+        if (allOccupiedRents.length > 0) {
+          const mid = Math.floor(allOccupiedRents.length / 2);
+          computedRent = allOccupiedRents.length % 2 !== 0
+            ? allOccupiedRents[mid]
+            : Math.round((allOccupiedRents[mid - 1] + allOccupiedRents[mid]) / 2);
+        } else {
+          computedRent = 7000;
+        }
+      }
+    }
+
     contentHtml = `
-      <div class="bg-emerald-50/70 border border-emerald-200 rounded-2xl p-6 text-center shadow-xs">
-        <div class="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-xl mx-auto mb-3">
-          ✨
+      <!-- Check-in New Tenant Form -->
+      <div class="bg-white rounded-2xl border border-slate-200/90 p-4 shadow-xs space-y-3.5">
+        <div class="flex items-center gap-2.5 pb-2.5 border-b border-slate-100">
+          <span class="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-base shadow-2xs">
+            ✍️
+          </span>
+          <div>
+            <h4 class="text-xs font-extrabold text-slate-800 uppercase tracking-wider">New Tenant Check-in</h4>
+            <p class="text-[11px] text-slate-400">Assign this vacant bed to a tenant</p>
+          </div>
         </div>
-        <p class="text-base font-extrabold text-emerald-950">Bed is Currently Vacant</p>
-        <p class="text-xs text-emerald-700 font-medium mt-1">Ready for immediate check-in and tenant assignment.</p>
+
+        <div>
+          <label for="inputTenantName" class="block text-xs font-bold text-slate-700 mb-1">
+            Tenant Full Name <span class="text-rose-500">*</span>
+          </label>
+          <input
+            id="inputTenantName"
+            type="text"
+            placeholder="e.g. Suresh Kumar"
+            autocomplete="off"
+            class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 text-slate-900 text-sm font-semibold placeholder:text-slate-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+          />
+          <p id="tenantNameError" class="hidden text-[11px] text-rose-500 font-semibold mt-1">Please enter tenant name</p>
+        </div>
+
+        <div>
+          <label for="inputTenantPhone" class="block text-xs font-bold text-slate-700 mb-1">
+            Phone Number <span class="text-slate-400 font-normal">(e.g. 10 digits)</span>
+          </label>
+          <input
+            id="inputTenantPhone"
+            type="tel"
+            placeholder="e.g. 98765 00010"
+            autocomplete="off"
+            class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 text-slate-900 text-sm font-semibold placeholder:text-slate-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+          />
+        </div>
+
+        <div class="flex items-center justify-between text-xs bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+          <span class="font-semibold text-slate-500">Monthly Rent</span>
+          <span class="font-extrabold text-slate-900 text-sm tabular-nums">${formatINR(computedRent)}<span class="text-[10px] text-slate-400 font-normal">/mo</span></span>
+        </div>
       </div>
     `;
   }
@@ -979,9 +1157,9 @@ function renderBedSheet(bed) {
       <button
         id="sheetBtnMarkOccupied"
         ${isSaving ? 'disabled' : ''}
-        class="w-full py-3.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded-2xl text-sm font-bold min-h-[50px] shadow-sm transition-all active:scale-95"
+        class="w-full py-3.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded-2xl text-sm font-bold min-h-[50px] shadow-sm transition-all active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
       >
-        Mark occupied
+        <span>✓</span> Check-in & Assign Bed
       </button>
     `;
   }
@@ -1033,10 +1211,13 @@ function renderBedSheet(bed) {
 
   const $btnMarkOccupied = document.getElementById('sheetBtnMarkOccupied');
   if ($btnMarkOccupied) {
-    $btnMarkOccupied.addEventListener('click', () => {
-      const roomOccupied = allBeds.filter(b => b.Room === bed.Room && b.Status === 'occupied' && Number(b.RentAmount) > 0);
+    const $inputName = document.getElementById('inputTenantName');
+    const $inputPhone = document.getElementById('inputTenantPhone');
+    const $errorMsg = document.getElementById('tenantNameError');
 
-      let computedRent = 0;
+    let computedRent = Number(bed.RentAmount) || 0;
+    if (!computedRent) {
+      const roomOccupied = allBeds.filter(b => b.Room === bed.Room && b.Status === 'occupied' && Number(b.RentAmount) > 0);
       if (roomOccupied.length > 0) {
         computedRent = Number(roomOccupied[0].RentAmount);
       } else {
@@ -1051,14 +1232,47 @@ function renderBedSheet(bed) {
             ? allOccupiedRents[mid]
             : Math.round((allOccupiedRents[mid - 1] + allOccupiedRents[mid]) / 2);
         } else {
-          computedRent = 8000;
+          computedRent = 7000;
         }
+      }
+    }
+
+    if ($inputName) {
+      setTimeout(() => $inputName.focus(), 150);
+      $inputName.addEventListener('input', () => {
+        if ($inputName.value.trim()) {
+          $inputName.classList.remove('border-rose-400', 'bg-rose-50/30');
+          if ($errorMsg) $errorMsg.classList.add('hidden');
+        }
+      });
+    }
+
+    [$inputName, $inputPhone].forEach(inp => {
+      inp?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          $btnMarkOccupied.click();
+        }
+      });
+    });
+
+    $btnMarkOccupied.addEventListener('click', () => {
+      const name = ($inputName?.value || '').trim();
+      const phone = ($inputPhone?.value || '').trim();
+
+      if (!name) {
+        if ($inputName) {
+          $inputName.classList.add('border-rose-400', 'bg-rose-50/30');
+          $inputName.focus();
+        }
+        if ($errorMsg) $errorMsg.classList.remove('hidden');
+        return;
       }
 
       const updates = {
         Status: 'occupied',
-        TenantName: 'New tenant',
-        Phone: '',
+        TenantName: name,
+        Phone: phone,
         RentAmount: computedRent,
         DueDate: addDaysToToday(30),
         LastPaidDate: '',
@@ -1066,7 +1280,7 @@ function renderBedSheet(bed) {
       };
 
       closeBedSheet();
-      applyChange(bed.BedID, updates, `Marked ${bed.BedID} as occupied`);
+      applyChange(bed.BedID, updates, `Assigned ${bed.BedID} to ${name}`);
     });
   }
 }
@@ -1136,9 +1350,29 @@ $menuResetBtn.addEventListener('click', async () => {
   }
 });
 
+// Toggle all floors (Expand all / Collapse all)
+if ($toggleAllFloorsBtn) {
+  $toggleAllFloorsBtn.addEventListener('click', () => {
+    const displayed = isVacantOnly ? allBeds.filter(b => b.Status === 'vacant') : allBeds;
+    const visibleFloors = [...new Set(displayed.map(b => b.Floor))];
+    const allExpanded = visibleFloors.length > 0 && visibleFloors.every(f => expandedFloors.has(f));
+
+    if (allExpanded) {
+      visibleFloors.forEach(f => expandedFloors.delete(f));
+    } else {
+      visibleFloors.forEach(f => expandedFloors.add(f));
+    }
+    renderBedGrid(allBeds);
+  });
+}
+
 // "Vacant only" filter chip on Beds tab
 $vacantFilterChip.addEventListener('click', () => {
   isVacantOnly = !isVacantOnly;
+  if (isVacantOnly) {
+    // Auto-expand all floors containing vacant beds so the user immediately sees them
+    allBeds.filter(b => b.Status === 'vacant').forEach(b => expandedFloors.add(b.Floor));
+  }
   renderBedGrid(allBeds);
 });
 
